@@ -1,3 +1,5 @@
+# AI Usage
+I'm running out of credits for other stuff so I didn't use AI for this activity at all.
 # /routes:
 - routes/feed.py:
     + /listening-now: returns what the user's friends are currently listening
@@ -51,3 +53,48 @@ User listens to a song => POST to /{song_id}/listen -->
 record_listening_event(user_id, song_id) is called -->
 A new ListeningEvent is created, and added to the listening_event table -->
 Then, the user's streak is updated with update_listening_streak.
+
+# Issues fixed
+## Issue 1: My listening streak keeps resetting
+```
+I found and reproduce it using the tests/ folder. That bug made the application failed both of the tests in test_streaks.py.
+Next, I traced the actual tests and found out that the streak didn't increaseon Sunday, so I navigated to update_listening_streak() in streak_service
+The cause was an elif clause that checked if today was not Sunday before increasing the streak. I simply deleted the conditional statement.
+```
+## Issue 2: Friends Listening Now shows people from yesterday
+```
+After reading the codebase, I know the root cause lies in get_friends_listening_now() of feed_service, so I navigate there directly.
+The issue of showing people from yesterday ties clearly to the "cutoff" variable. Indeed, the math logic for comparing against "cutoff" is wrong:
+cutoff = datetime.now(timezone.utc) - RECENT_THRESHOLD
+datetime.now(timezone.utc) - ListeningEvent.listened_at < RECENT_THRESHOLD
+=> ListeningEvent.listened_at > cutoff,
+NOT ListeningEvent.listened_at >= cutoff
+I verified it didn't change anything else by test running /feed/<user_id>/activity
+```
+## Issue 3: The same song keeps showing up twice in search
+```
+I think there is no issue with this. I tried multiple tests with:
+GET http://127.0.0.1:5000/songs/search?q=...
+and none of them returned duplicate results.
+The code logic looks correct to me, also.
+```
+## Issue 4: I got notified when a friend added my song to a playlist but not when they rated it
+```
+I reproduced the issue with some POST request, for e.g:
+POST http://127.0.0.1:5000/songs/c74c40b6-30e6-48b3-a002-c666bd5cb017/rate
+Content-Type: application/json
+
+{
+  "user_id": "b042dda8-31f6-4dcd-8097-797b937885ba",
+  "score": 3
+}
+
+This obviously lied in the rating logic, so I navigated to rate_song() of notification_service.py. I found out that the function only records the user's rating, but doesn't notify the sharer, so I added it with the same logic as add_song_to_playlist()
+I verified it works by running the same POST commands again and check the notification tables, looking for the row that contains the sharer id.
+```
+## Issue 5: The last song in a playlist never shows up
+```
+I found and reproduce it using the tests/ folder, in particular test_playlist. For the test failed, they all showed the last song missing.
+The corresponding endpoint is /<playlist_id>/songs, and the corresponding function is get_playlist_songs(). The return statement returns all the songs but the last one, so I simply fixed that.
+The function is not used anywhere else so nothing else is affected.
+```
