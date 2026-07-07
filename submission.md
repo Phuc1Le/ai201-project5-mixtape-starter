@@ -98,3 +98,5 @@ I found and reproduce it using the tests/ folder, in particular test_playlist. F
 The corresponding endpoint is /<playlist_id>/songs, and the corresponding function is get_playlist_songs(). The return statement returns all the songs but the last one, so I simply fixed that.
 The function is not used anywhere else so nothing else is affected.
 ```
+
+![alt text](image.png)
