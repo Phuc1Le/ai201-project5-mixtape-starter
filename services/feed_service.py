@@ -39,7 +39,7 @@ def get_friends_listening_now(user_id: str) -> list[dict]:
         db.session.query(ListeningEvent)
         .filter(
             ListeningEvent.user_id.in_(friend_ids),
-            ListeningEvent.listened_at >= cutoff,
+            ListeningEvent.listened_at > cutoff,
         )
         .order_by(desc(ListeningEvent.listened_at))
         .all()
